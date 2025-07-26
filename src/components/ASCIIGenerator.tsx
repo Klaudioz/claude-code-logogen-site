@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 
 const ASCIIGenerator = () => {
   const [text, setText] = useState('CLAUDE\\nCODE');
-  const [generated, setGenerated] = useState([]);
+  const [generated, setGenerated] = useState<string[]>([]);
 
-  // 3D ASCII art font using box-drawing characters - 6 lines height
-  const asciiFont = {
+  // Claude Code logo font using box-drawing characters - 6 lines height
+  const asciiFont: Record<string, string[]> = {
     'A': [
       '  █████╗ ',
       ' ██╔══██╗',
@@ -308,7 +308,7 @@ const ASCIIGenerator = () => {
     // Replace literal \n with actual newline
     const processedText = text.replace(/\\n/g, '\n');
     const lines = processedText.split('\n');
-    const allGeneratedLines = [];
+    const allGeneratedLines: string[] = [];
     
     lines.forEach((line, lineIndex) => {
       const upperLine = line.toUpperCase();
@@ -335,13 +335,20 @@ const ASCIIGenerator = () => {
     setGenerated(allGeneratedLines);
   };
 
-  const downloadPNG = () => {
-    if (generated.length === 0) return;
+  const downloadPNG = async () => {
+    if (generated.length === 0) {
+      alert('Please generate ASCII art first!');
+      return;
+    }
     
     try {
       // Create canvas
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('Could not get canvas context');
+      }
       
       // Settings
       const fontSize = 20;
@@ -363,44 +370,53 @@ const ASCIIGenerator = () => {
       ctx.fillStyle = '#D97757';
       ctx.textBaseline = 'top';
       
-      // Draw text centered
+      // Draw text (left-aligned for multi-line, centered for single line)
+      const hasMultipleTextLines = text.includes('\\n') || text.includes('\n');
+      
       generated.forEach((line, index) => {
-        const textWidth = ctx.measureText(line).width;
-        const x = (canvas.width - textWidth) / 2;
+        let x: number;
+        if (hasMultipleTextLines) {
+          // Left-align for multi-line text
+          x = padding;
+        } else {
+          // Center for single line
+          const textWidth = ctx.measureText(line).width;
+          x = (canvas.width - textWidth) / 2;
+        }
         const y = padding + (index * lineHeight);
         ctx.fillText(line, x, y);
       });
       
-      // Download
+      // Convert to blob and download
       canvas.toBlob((blob) => {
         if (!blob) {
-          console.error('Failed to create blob');
-          return;
+          throw new Error('Failed to create blob from canvas');
         }
         
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `ascii-art-${Date.now()}.png`;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `ascii-art-${Date.now()}.png`;
         
-        document.body.appendChild(a);
-        a.click();
+        // Append to body, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         
-        // Cleanup
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        // Clean up the blob URL
+        URL.revokeObjectURL(url);
       }, 'image/png');
+      
     } catch (error) {
       console.error('Error generating PNG:', error);
-      alert('Failed to generate PNG. Please try again.');
+      alert(`Failed to generate PNG: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-black rounded-lg">
       <h1 className="text-4xl font-bold mb-8 text-center" style={{ color: '#D97757' }}>
-        3D ASCII Art Generator
+        Claude Code logo Generator
       </h1>
       
       <div className="space-y-6 mb-8">
@@ -415,8 +431,8 @@ const ASCIIGenerator = () => {
             className="w-full px-4 py-3 bg-gray-900 border-2 rounded-md focus:outline-none focus:ring-2 text-white text-lg font-mono"
             style={{ 
               borderColor: '#D97757',
-              focusBorderColor: '#D97757'
             }}
+            onFocus={(e) => e.target.style.borderColor = '#D97757'}
             placeholder='Enter text (e.g., "CLAUDE\nCODE")'
           />
         </div>
@@ -426,19 +442,23 @@ const ASCIIGenerator = () => {
           className="w-full px-6 py-3 text-white rounded-md transition-colors text-lg font-semibold"
           style={{ 
             backgroundColor: '#D97757',
-            ':hover': { backgroundColor: '#C96747' }
           }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = '#C96747'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = '#D97757'}
+          onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#C96747'}
+          onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#D97757'}
         >
-          Generate 3D ASCII Art
+          Generate Claude Code logo
         </button>
       </div>
       
       {generated.length > 0 && (
         <div className="space-y-6">
           <div className="bg-gray-900 p-6 rounded-md overflow-x-auto border-2" style={{ borderColor: '#D97757' }}>
-            <pre className="font-mono text-base leading-tight whitespace-pre" style={{ color: '#D97757' }}>
+            <pre 
+              className={`font-mono text-base leading-tight whitespace-pre ${
+                text.includes('\\n') || text.includes('\n') ? 'text-left' : 'text-center'
+              }`} 
+              style={{ color: '#D97757' }}
+            >
               {generated.join('\n')}
             </pre>
           </div>
@@ -448,17 +468,12 @@ const ASCIIGenerator = () => {
             className="px-6 py-3 text-white rounded-md transition-colors font-semibold"
             style={{ 
               backgroundColor: '#D97757',
-              ':hover': { backgroundColor: '#C96747' }
             }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#C96747'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#D97757'}
+            onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#C96747'}
+            onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#D97757'}
           >
             Download PNG
           </button>
-          
-          <div className="mt-4 p-4 bg-gray-900 rounded-md border text-sm" style={{ borderColor: '#D97757', color: '#D97757' }}>
-            <strong>Tip:</strong> Now you can use \n in your text to create multiple lines.
-          </div>
         </div>
       )}
     </div>
