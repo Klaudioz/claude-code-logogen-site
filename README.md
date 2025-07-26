@@ -46,7 +46,7 @@ npm run build
 wrangler deploy
 ```
 
-The app will be available at `https://ascii-art-generator.<your-subdomain>.workers.dev`
+The app will be available at `https://claude-code-logogen.<your-subdomain>.workers.dev`
 
 ## Tech Stack
 
