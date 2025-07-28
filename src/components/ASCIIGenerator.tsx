@@ -308,6 +308,13 @@ const ASCIIGenerator = () => {
     // Replace literal \n with actual newline
     const processedText = text.replace(/\\n/g, '\n');
     const lines = processedText.split('\n');
+    
+    // Enforce maximum of 10 lines
+    if (lines.length > 10) {
+      alert('Maximum 10 lines allowed. Please reduce your text.');
+      return;
+    }
+    
     const allGeneratedLines: string[] = [];
     
     lines.forEach((line, lineIndex) => {
@@ -422,7 +429,7 @@ const ASCIIGenerator = () => {
       <div className="space-y-6 mb-8">
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: '#D97757' }}>
-            Enter Text (use \n for new line):
+            Enter Text (use \n for new line, max 10 lines):
           </label>
           <input
             type="text"
