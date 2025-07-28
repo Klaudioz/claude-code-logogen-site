@@ -683,6 +683,11 @@ const ASCIIGenerator = () => {
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                generateASCII();
+              }
+            }}
             className="w-full px-4 py-3 bg-gray-900 border-2 rounded-md focus:outline-none focus:ring-2 text-white text-lg font-mono"
             style={{ 
               borderColor: '#D97757',
