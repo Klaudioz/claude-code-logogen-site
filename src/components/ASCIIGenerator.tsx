@@ -651,7 +651,7 @@ const ASCIIGenerator = () => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `ascii-art-${Date.now()}.png`;
+        link.download = `cc-logo-${Date.now()}.png`;
         
         // Append to body, click, and remove
         document.body.appendChild(link);
