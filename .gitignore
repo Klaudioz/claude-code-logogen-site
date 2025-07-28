@@ -99,4 +99,5 @@ temp/
 *.tsbuildinfo
 
 # Cloudflare Workers (if using wrangler)
-.wrangler/ 
+.wrangler/
+.dev.vars
