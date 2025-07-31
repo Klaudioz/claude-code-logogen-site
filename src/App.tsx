@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import ASCIIGenerator from './components/ASCIIGenerator';
-import VideoGenerator from './components/VideoGenerator';
 import { generateASCIILines } from './lib/asciiUtils';
 
 function App() {
@@ -72,10 +71,7 @@ function App() {
               </pre>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ASCIIGenerator text={text} generated={generated} />
-              <VideoGenerator text={text} />
-            </div>
+            <ASCIIGenerator text={text} generated={generated} />
           </div>
         )}
       </div>
