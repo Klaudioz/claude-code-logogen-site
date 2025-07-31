@@ -4,9 +4,16 @@ export const generateASCIILines = (inputText: string): string[] => {
   const processedText = inputText.replace(/\\n/g, '\n');
   const lines = processedText.split('\n');
   
-  if (lines.length > 10) {
-    throw new Error('Maximum 10 lines allowed. Please reduce your text.');
+  if (lines.length > 5) {
+    throw new Error('Maximum 5 lines allowed. Please reduce your text.');
   }
+  
+  // Check horizontal length for each line
+  lines.forEach((line, index) => {
+    if (line.length > 15) {
+      throw new Error(`Line ${index + 1} is too long (${line.length} characters). Maximum 15 characters per line.`);
+    }
+  });
   
   const allGeneratedLines: string[] = [];
   

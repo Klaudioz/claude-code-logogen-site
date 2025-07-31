@@ -1,19 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ASCIIGenerator from './components/ASCIIGenerator';
 import { generateASCIILines } from './lib/asciiUtils';
 
 function App() {
   const [text, setText] = useState('CLAUDE\\nCODE');
   const [generated, setGenerated] = useState<string[]>([]);
+  const [error, setError] = useState<string>('');
 
   const handleGenerateASCII = () => {
     try {
       const asciiLines = generateASCIILines(text);
       setGenerated(asciiLines);
+      setError('');
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Unknown error');
+      setError(error instanceof Error ? error.message : 'Unknown error');
+      setGenerated([]);
     }
   };
+
+  // Auto-generate ASCII when text changes
+  useEffect(() => {
+    handleGenerateASCII();
+  }, [text]);
 
   return (
     <div className="min-h-screen bg-black">
@@ -25,7 +33,7 @@ function App() {
         <div className="space-y-6 mb-8">
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: '#D97757' }}>
-              Enter Text (use \n for new line, max 10 lines):
+              Enter Text (use \n for new line, max 5 lines, 15 chars per line):
             </label>
             <input
               type="text"
@@ -33,7 +41,7 @@ function App() {
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  handleGenerateASCII();
+                  e.preventDefault(); // Prevent form submission
                 }
               }}
               className="w-full px-4 py-3 bg-gray-900 border-2 rounded-md focus:outline-none focus:ring-2 text-white text-lg font-mono"
@@ -43,19 +51,12 @@ function App() {
               onFocus={(e) => e.target.style.borderColor = '#D97757'}
               placeholder='Enter text (e.g., "CLAUDE\nCODE")'
             />
+            {error && (
+              <p className="text-red-400 text-sm mt-2">
+                {error}
+              </p>
+            )}
           </div>
-          
-          <button
-            onClick={handleGenerateASCII}
-            className="w-full px-6 py-3 text-white rounded-md transition-colors text-lg font-semibold"
-            style={{ 
-              backgroundColor: '#D97757',
-            }}
-            onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#C96747'}
-            onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#D97757'}
-          >
-            Generate Logo
-          </button>
         </div>
         
         {generated.length > 0 && (
