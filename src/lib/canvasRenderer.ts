@@ -17,6 +17,10 @@ export interface AnimationOptions extends RenderOptions {
   bounceIntensity?: number;
   rotationIntensity?: number;
   scaleIntensity?: number;
+  bounceSpeed?: number;
+  retroFlare?: boolean;
+  glowIntensity?: number;
+  scanlines?: boolean;
 }
 
 export const renderStaticASCII = (options: RenderOptions): void => {
@@ -102,7 +106,11 @@ export const renderAnimatedASCII = (options: AnimationOptions): void => {
     shadowColor = 'rgba(217, 119, 87, 0.5)',
     bounceIntensity = 20,
     rotationIntensity = 0.02,
-    scaleIntensity = 0.02
+    scaleIntensity = 0.02,
+    bounceSpeed = 1,
+    retroFlare = true,
+    glowIntensity = 1,
+    scanlines = true
   } = options;
 
   const ctx = canvas.getContext('2d');
@@ -121,20 +129,37 @@ export const renderAnimatedASCII = (options: AnimationOptions): void => {
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Calculate animation effects
-  const bounceY = Math.sin(progress * Math.PI * 4) * bounceIntensity;
-  const floatY = Math.sin(progress * Math.PI * 2) * (bounceIntensity * 0.5);
-  const rotation = Math.sin(progress * Math.PI * 3) * rotationIntensity;
-  const scale = 1 + Math.sin(progress * Math.PI * 6) * scaleIntensity;
+  // Add retro scanlines effect
+  if (scanlines) {
+    ctx.save();
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = '#00FF00';
+    for (let y = 0; y < canvas.height; y += 4) {
+      ctx.fillRect(0, y, canvas.width, 1);
+    }
+    ctx.restore();
+  }
+
+  // Calculate animation effects with customizable speed
+  const speedMultiplier = bounceSpeed;
+  const bounceY = Math.sin(progress * Math.PI * 4 * speedMultiplier) * bounceIntensity;
+  const floatY = Math.sin(progress * Math.PI * 2 * speedMultiplier) * (bounceIntensity * 0.5);
+  const rotation = Math.sin(progress * Math.PI * 3 * speedMultiplier) * rotationIntensity;
+  const scale = 1 + Math.sin(progress * Math.PI * 6 * speedMultiplier) * scaleIntensity;
+
+  // Calculate bounce intensity for flare effects
+  const bounceIntensityNorm = Math.abs(Math.sin(progress * Math.PI * 4 * speedMultiplier));
 
   // Setup text rendering
   ctx.font = `${fontSize}px "Courier New", monospace`;
   ctx.fillStyle = color;
   ctx.textBaseline = 'middle';
   
+  // Enhanced glow effect based on bounce intensity
   if (shadow) {
+    const dynamicGlow = shadowBlur * glowIntensity * (1 + bounceIntensityNorm * 0.5);
     ctx.shadowColor = shadowColor;
-    ctx.shadowBlur = shadowBlur;
+    ctx.shadowBlur = dynamicGlow;
   }
 
   // Determine alignment
@@ -168,6 +193,46 @@ export const renderAnimatedASCII = (options: AnimationOptions): void => {
   });
 
   ctx.restore();
+  
+  // Add retro flare effects when bouncing
+  if (retroFlare && bounceIntensityNorm > 0.7) {
+    ctx.save();
+    ctx.globalAlpha = bounceIntensityNorm * 0.3;
+    ctx.fillStyle = color;
+    
+    // Create radial flare effect
+    const gradient = ctx.createRadialGradient(
+      canvas.width / 2, canvas.height / 2, 0,
+      canvas.width / 2, canvas.height / 2, 200
+    );
+    gradient.addColorStop(0, 'rgba(217, 119, 87, 0.8)');
+    gradient.addColorStop(0.3, 'rgba(255, 255, 0, 0.4)');
+    gradient.addColorStop(0.6, 'rgba(255, 0, 255, 0.2)');
+    gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    
+    ctx.restore();
+  }
+  
+  // Add retro CRT vignette effect
+  if (retroFlare) {
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    const vignette = ctx.createRadialGradient(
+      canvas.width / 2, canvas.height / 2, 0,
+      canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height) / 2
+    );
+    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vignette.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+    
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  }
   
   if (shadow) {
     ctx.shadowBlur = 0;

@@ -8,12 +8,17 @@ interface ASCIIGeneratorProps {
 }
 
 const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
-  const [showPreview, setShowPreview] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(true); // Always animate preview
   const [isRecording, setIsRecording] = useState(false);
   const [recordingProgress, setRecordingProgress] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(null);
+  
+  // Video controls state
+  const [videoDuration, setVideoDuration] = useState(6); // 4-10 seconds
+  const [bounceSpeed, setBounceSpeed] = useState(1); // 0.5-2x speed
+  const [retroFlare, setRetroFlare] = useState(false);
+  const [scanlines, setScanlines] = useState(false);
 
   const downloadPNG = async () => {
     if (generated.length === 0) {
@@ -45,17 +50,6 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
     }
   };
 
-  const handlePreviewVideo = useCallback(() => {
-    setShowPreview(!showPreview);
-    if (!showPreview) {
-      setIsAnimating(true);
-    } else {
-      setIsAnimating(false);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    }
-  }, [showPreview]);
 
   const handleDownloadVideo = useCallback(async () => {
     if (!canvasRef.current || isRecording) return;
@@ -71,7 +65,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
       const videoRecorder = createVideoRecorder(canvas);
       videoRecorder.start();
 
-      const duration = 10000; // 10 seconds
+      const duration = videoDuration * 1000; // Convert to milliseconds
       const startTime = Date.now();
       
       const recordAnimation = () => {
@@ -86,7 +80,10 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
           fontSize: 16,
           bounceIntensity: 30,
           rotationIntensity: 0.05,
-          scaleIntensity: 0.05
+          scaleIntensity: 0.05,
+          bounceSpeed,
+          retroFlare,
+          scanlines
         });
         
         if (elapsed < duration) {
@@ -113,7 +110,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
       setIsRecording(false);
       setRecordingProgress(0);
     }
-  }, [text, isRecording]);
+  }, [text, isRecording, videoDuration, bounceSpeed, retroFlare, scanlines]);
 
   // Animation for preview
   useEffect(() => {
@@ -130,7 +127,10 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
         renderAnimatedASCII({
           canvas: canvasRef.current,
           text,
-          progress
+          progress,
+          bounceSpeed,
+          retroFlare,
+          scanlines
         });
       }
       
@@ -146,7 +146,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isAnimating, text]);
+  }, [isAnimating, text, bounceSpeed, retroFlare, scanlines]);
 
   if (generated.length === 0) {
     return (
@@ -159,36 +159,80 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* PNG Export */}
-      <div className="bg-gray-900 p-6 rounded-md border-2 space-y-4" style={{ borderColor: '#D97757' }}>
-        <h3 className="text-xl font-bold text-center" style={{ color: '#D97757' }}>
-          PNG Export
-        </h3>
+    <div className="bg-gray-900 p-6 rounded-md border-2 space-y-4" style={{ borderColor: '#D97757' }}>
+      <h3 className="text-xl font-bold text-center" style={{ color: '#D97757' }}>
+        Export Options
+      </h3>
         
-        <div className="text-center">
-          <button
-            onClick={downloadPNG}
-            className="px-6 py-3 text-white rounded-md transition-colors font-semibold mx-auto"
-            style={{ backgroundColor: '#D97757' }}
-            onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#C96747'}
-            onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#D97757'}
-          >
-            Download PNG
-          </button>
-        </div>
-      </div>
+        <div className="text-center space-y-4">
+          {/* Video Controls */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+            {/* Duration Control */}
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: '#D97757' }}>
+                Duration: {videoDuration}s
+              </label>
+              <input
+                type="range"
+                min="4"
+                max="10"
+                step="1"
+                value={videoDuration}
+                onChange={(e) => setVideoDuration(Number(e.target.value))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #D97757 0%, #D97757 ${(videoDuration - 4) / 6 * 100}%, #374151 ${(videoDuration - 4) / 6 * 100}%, #374151 100%)`
+                }}
+              />
+            </div>
 
-      {/* Video Export */}
-      <div className="bg-gray-900 p-6 rounded-md border-2 space-y-4" style={{ borderColor: '#D97757' }}>
-        <h3 className="text-xl font-bold text-center" style={{ color: '#D97757' }}>
-          Video Export
-        </h3>
-        
-        <div className="text-center space-y-3">
+            {/* Bounce Speed Control */}
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: '#D97757' }}>
+                Bounce Speed: {bounceSpeed.toFixed(1)}x
+              </label>
+              <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value={bounceSpeed}
+                onChange={(e) => setBounceSpeed(Number(e.target.value))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #D97757 0%, #D97757 ${(bounceSpeed - 0.5) / 1.5 * 100}%, #374151 ${(bounceSpeed - 0.5) / 1.5 * 100}%, #374151 100%)`
+                }}
+              />
+            </div>
+
+
+            {/* Toggle Controls */}
+            <div className="space-y-3">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={retroFlare}
+                  onChange={(e) => setRetroFlare(e.target.checked)}
+                  className="mr-2"
+                />
+                <span style={{ color: '#D97757' }}>Retro Flare Effects</span>
+              </label>
+              
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={scanlines}
+                  onChange={(e) => setScanlines(e.target.checked)}
+                  className="mr-2"
+                />
+                <span style={{ color: '#D97757' }}>CRT Scanlines</span>
+              </label>
+            </div>
+          </div>
+          
           <div className="flex gap-3 justify-center">
             <button
-              onClick={handlePreviewVideo}
+              onClick={downloadPNG}
               className="px-4 py-2 text-white rounded-md transition-colors font-semibold"
               style={{ backgroundColor: '#D97757' }}
               onMouseEnter={(e) => {
@@ -198,7 +242,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
                 (e.target as HTMLButtonElement).style.backgroundColor = '#D97757';
               }}
             >
-              {showPreview ? 'Hide Preview' : 'Show Preview'}
+              Download PNG
             </button>
             
             <button
@@ -236,23 +280,20 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
             </div>
           )}
           
-          {showPreview && (
-            <div className="mt-4 border-2 border-orange-400 rounded-lg overflow-hidden bg-black">
-              <canvas
-                ref={canvasRef}
-                width={800}
-                height={400}
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  maxHeight: '400px',
-                  display: 'block'
-                }}
-              />
-            </div>
-          )}
+          <div className="mt-4 border-2 border-orange-400 rounded-lg overflow-hidden bg-black">
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={400}
+              style={{
+                width: '100%',
+                height: 'auto',
+                maxHeight: '400px',
+                display: 'block'
+              }}
+            />
+          </div>
         </div>
-      </div>
     </div>
   );
 };
