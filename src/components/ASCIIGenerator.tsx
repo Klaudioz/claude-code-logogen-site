@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { downloadFile } from '../lib/asciiUtils';
-import { renderStaticASCII, renderAnimatedASCII, createVideoRecorder } from '../lib/canvasRenderer';
+import { renderStaticASCII, renderAnimatedASCII, createVideoRecorder, AnimationType } from '../lib/canvasRenderer';
 
 interface ASCIIGeneratorProps {
   text: string;
@@ -11,6 +11,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
   const [isAnimating, setIsAnimating] = useState(true); // Always animate preview
   const [isRecording, setIsRecording] = useState(false);
   const [recordingProgress, setRecordingProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0); // Current time in preview
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(null);
   
@@ -19,6 +20,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
   const [bounceSpeed, setBounceSpeed] = useState(1); // 0.5-2x speed
   const [retroFlare, setRetroFlare] = useState(false);
   const [scanlines, setScanlines] = useState(false);
+  const [animationType, setAnimationType] = useState<AnimationType>('bounce');
 
   const downloadPNG = async () => {
     if (generated.length === 0) {
@@ -77,6 +79,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
           canvas,
           text,
           progress,
+          animationType,
           fontSize: 16,
           bounceIntensity: 30,
           rotationIntensity: 0.05,
@@ -90,7 +93,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
           requestAnimationFrame(recordAnimation);
         } else {
           videoRecorder.stop().then((videoBlob) => {
-            downloadFile(videoBlob, `bouncing-ascii-${Date.now()}.webm`);
+            downloadFile(videoBlob, `${animationType}-ascii-${Date.now()}.webm`);
             setIsRecording(false);
             setRecordingProgress(0);
           }).catch((error) => {
@@ -110,24 +113,28 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
       setIsRecording(false);
       setRecordingProgress(0);
     }
-  }, [text, isRecording, videoDuration, bounceSpeed, retroFlare, scanlines]);
+  }, [text, isRecording, videoDuration, bounceSpeed, retroFlare, scanlines, animationType]);
 
   // Animation for preview
   useEffect(() => {
     if (!isAnimating || !canvasRef.current) return;
 
     let startTime = Date.now();
-    const duration = 10000; // 10 seconds loop
+    const duration = videoDuration * 1000; // Use video duration setting
 
     const animate = () => {
       const elapsed = (Date.now() - startTime) % duration;
       const progress = elapsed / duration;
+      const currentTimeSeconds = elapsed / 1000;
+      
+      setCurrentTime(currentTimeSeconds);
       
       if (canvasRef.current) {
         renderAnimatedASCII({
           canvas: canvasRef.current,
           text,
           progress,
+          animationType,
           bounceSpeed,
           retroFlare,
           scanlines
@@ -146,7 +153,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isAnimating, text, bounceSpeed, retroFlare, scanlines]);
+  }, [isAnimating, text, bounceSpeed, retroFlare, scanlines, animationType, videoDuration]);
 
   if (generated.length === 0) {
     return (
@@ -165,8 +172,26 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
       </h3>
         
         <div className="text-center space-y-4">
+          {/* Animation Type Selection */}
+          <div className="text-left">
+            <label className="block text-sm font-medium mb-2" style={{ color: '#D97757' }}>
+              Animation Type
+            </label>
+            <select 
+              value={animationType}
+              onChange={(e) => setAnimationType(e.target.value as AnimationType)}
+              className="w-full p-2 bg-gray-800 text-white rounded-md border border-gray-600"
+              style={{ borderColor: '#D97757' }}
+            >
+              <option value="bounce">Bouncing Effect</option>
+              <option value="slideFromBottom">Slide from Bottom</option>
+              <option value="slideFromTop">Slide from Top</option>
+              <option value="binaryTransition">Binary Transition</option>
+            </select>
+          </div>
+
           {/* Video Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+          <div className={`grid gap-4 text-left ${animationType === 'bounce' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
             {/* Duration Control */}
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: '#D97757' }}>
@@ -186,24 +211,26 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
               />
             </div>
 
-            {/* Bounce Speed Control */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: '#D97757' }}>
-                Bounce Speed: {bounceSpeed.toFixed(1)}x
-              </label>
-              <input
-                type="range"
-                min="0.5"
-                max="2"
-                step="0.1"
-                value={bounceSpeed}
-                onChange={(e) => setBounceSpeed(Number(e.target.value))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, #D97757 0%, #D97757 ${(bounceSpeed - 0.5) / 1.5 * 100}%, #374151 ${(bounceSpeed - 0.5) / 1.5 * 100}%, #374151 100%)`
-                }}
-              />
-            </div>
+            {/* Animation Speed Control - Only show for bounce animation */}
+            {animationType === 'bounce' && (
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#D97757' }}>
+                  Animation Speed: {bounceSpeed.toFixed(1)}x
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2"
+                  step="0.1"
+                  value={bounceSpeed}
+                  onChange={(e) => setBounceSpeed(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #D97757 0%, #D97757 ${(bounceSpeed - 0.5) / 1.5 * 100}%, #374151 ${(bounceSpeed - 0.5) / 1.5 * 100}%, #374151 100%)`
+                  }}
+                />
+              </div>
+            )}
 
 
             {/* Toggle Controls */}
@@ -280,7 +307,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
             </div>
           )}
           
-          <div className="mt-4 border-2 border-orange-400 rounded-lg overflow-hidden bg-black">
+          <div className="mt-4 border-2 border-orange-400 rounded-lg overflow-hidden bg-black relative">
             <canvas
               ref={canvasRef}
               width={800}
@@ -292,6 +319,22 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
                 display: 'block'
               }}
             />
+            
+            {/* Time display overlay */}
+            <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 px-2 py-1 rounded text-sm font-mono" style={{ color: '#D97757' }}>
+              {Math.floor(currentTime)}s / {videoDuration}s
+            </div>
+            
+            {/* Progress bar */}
+            <div className="absolute bottom-0 left-0 w-full h-1 bg-black bg-opacity-50">
+              <div 
+                className="h-full transition-all duration-100" 
+                style={{ 
+                  backgroundColor: '#D97757',
+                  width: `${(currentTime / videoDuration) * 100}%`
+                }}
+              ></div>
+            </div>
           </div>
         </div>
     </div>
