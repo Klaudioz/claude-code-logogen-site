@@ -20,6 +20,8 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
   const [bounceSpeed, setBounceSpeed] = useState(1); // 0.5-2x speed
   const [retroFlare, setRetroFlare] = useState(false);
   const [scanlines, setScanlines] = useState(false);
+  const [matrixRain, setMatrixRain] = useState(false);
+  const [chromaticAberration, setChromaticAberration] = useState(false);
   const [animationType, setAnimationType] = useState<AnimationType>('bounce');
 
   const downloadPNG = async () => {
@@ -86,7 +88,9 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
           scaleIntensity: 0.05,
           bounceSpeed,
           retroFlare,
-          scanlines
+          scanlines,
+          matrixRain,
+          chromaticAberration
         });
         
         if (elapsed < duration) {
@@ -113,7 +117,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
       setIsRecording(false);
       setRecordingProgress(0);
     }
-  }, [text, isRecording, videoDuration, bounceSpeed, retroFlare, scanlines, animationType]);
+  }, [text, isRecording, videoDuration, bounceSpeed, retroFlare, scanlines, matrixRain, chromaticAberration, animationType]);
 
   // Animation for preview
   useEffect(() => {
@@ -137,7 +141,9 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
           animationType,
           bounceSpeed,
           retroFlare,
-          scanlines
+          scanlines,
+          matrixRain,
+          chromaticAberration
         });
       }
       
@@ -153,7 +159,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isAnimating, text, bounceSpeed, retroFlare, scanlines, animationType, videoDuration]);
+  }, [isAnimating, text, bounceSpeed, retroFlare, scanlines, matrixRain, chromaticAberration, animationType, videoDuration]);
 
   if (generated.length === 0) {
     return (
@@ -190,7 +196,7 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
           </div>
 
           {/* Video Controls */}
-          <div className={`grid gap-4 text-left ${animationType === 'bounce' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+          <div className="grid gap-4 text-left grid-cols-1 md:grid-cols-2">
             {/* Duration Control */}
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: '#D97757' }}>
@@ -231,28 +237,77 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
               </div>
             )}
 
-            {/* Toggle Controls */}
-            <div className="space-y-3">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={retroFlare}
-                  onChange={(e) => setRetroFlare(e.target.checked)}
-                  className="mr-2"
-                />
-                <span style={{ color: '#D97757' }}>Retro Flare Effects</span>
-              </label>
-              
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={scanlines}
-                  onChange={(e) => setScanlines(e.target.checked)}
-                  className="mr-2"
-                />
-                <span style={{ color: '#D97757' }}>CRT Scanlines</span>
-              </label>
-            </div>
+            {/* New Effects - positioned to align with Animation Speed */}
+            {animationType !== 'bounce' && (
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={matrixRain}
+                    onChange={(e) => setMatrixRain(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span style={{ color: '#D97757' }} className="text-sm">Matrix Rain</span>
+                </label>
+                
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={chromaticAberration}
+                    onChange={(e) => setChromaticAberration(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span style={{ color: '#D97757' }} className="text-sm">Chromatic Aberration</span>
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Toggle Controls for Original Effects + New Effects when bounce is selected */}
+          <div className="space-y-2">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={retroFlare}
+                onChange={(e) => setRetroFlare(e.target.checked)}
+                className="mr-2"
+              />
+              <span style={{ color: '#D97757' }} className="text-sm">Retro Flare Effects</span>
+            </label>
+            
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={scanlines}
+                onChange={(e) => setScanlines(e.target.checked)}
+                className="mr-2"
+              />
+              <span style={{ color: '#D97757' }} className="text-sm">CRT Scanlines</span>
+            </label>
+
+            {animationType === 'bounce' && (
+              <>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={matrixRain}
+                    onChange={(e) => setMatrixRain(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span style={{ color: '#D97757' }} className="text-sm">Matrix Rain</span>
+                </label>
+                
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={chromaticAberration}
+                    onChange={(e) => setChromaticAberration(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span style={{ color: '#D97757' }} className="text-sm">Chromatic Aberration</span>
+                </label>
+              </>
+            )}
           </div>
           
           <div className="flex gap-3 justify-center">

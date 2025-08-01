@@ -24,6 +24,8 @@ export interface AnimationOptions extends RenderOptions {
   retroFlare?: boolean;
   glowIntensity?: number;
   scanlines?: boolean;
+  matrixRain?: boolean;
+  chromaticAberration?: boolean;
 }
 
 export const renderStaticASCII = (options: RenderOptions): void => {
@@ -329,7 +331,9 @@ export const renderAnimatedASCII = (options: AnimationOptions): void => {
     bounceSpeed = 1,
     retroFlare = true,
     glowIntensity = 1,
-    scanlines = true
+    scanlines = true,
+    matrixRain = false,
+    chromaticAberration = false
   } = options;
 
   const ctx = canvas.getContext('2d');
@@ -423,6 +427,88 @@ export const renderAnimatedASCII = (options: AnimationOptions): void => {
     
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  }
+
+  // Add Matrix Rain effect
+  if (matrixRain) {
+    ctx.save();
+    ctx.font = `${fontSize * 0.6}px "Courier New", monospace`;
+    ctx.fillStyle = '#00FF41';
+    
+    const matrixChars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+    const columnWidth = fontSize * 1.2;
+    const columns = Math.floor(canvas.width / columnWidth);
+    
+    // Calculate text boundaries to avoid overlap
+    const textCenterY = canvas.height / 2;
+    const textHeight = asciiLines.length * (fontSize * 1.125);
+    const textTopY = textCenterY - textHeight / 2;
+    const textBottomY = textCenterY + textHeight / 2;
+    const textPadding = fontSize;
+    
+    for (let i = 0; i < columns; i++) {
+      // Random chance for each column to have rain (creates gaps)
+      const columnSeed = Math.sin(i * 12.34) * 10000;
+      const randomOffset = (columnSeed - Math.floor(columnSeed)) * 1000;
+      if ((progress * 100 + randomOffset) % 300 > 120) continue; // Show ~40% of columns
+      
+      const x = i * columnWidth + (Math.sin(i * 7.89 + progress * 3) * 5); // Slight horizontal drift
+      const speed = 0.8 + (Math.sin(i * 3.45) * 0.4); // More varied, slower speeds
+      const phaseOffset = Math.sin(i * 2.17) * 500;
+      const offset = (progress * speed * 400 + phaseOffset) % (canvas.height + 300);
+      
+      const trailLength = 8 + Math.floor(Math.sin(i * 4.56) * 4); // Variable trail lengths 8-12
+      
+      for (let j = 0; j < trailLength; j++) {
+        const y = offset - j * fontSize * 0.9;
+        
+        // Skip characters that would overlap with main text
+        if (y > textTopY - textPadding && y < textBottomY + textPadding) {
+          continue;
+        }
+        
+        if (y > -fontSize && y < canvas.height + fontSize) {
+          // More random character selection
+          const timeVariation = progress * 8 + i * 2.3 + j * 1.7;
+          const charSeed = Math.sin(timeVariation) * Math.cos(timeVariation * 1.6) * 1000;
+          const charIndex = Math.floor((charSeed - Math.floor(charSeed)) * matrixChars.length);
+          
+          const alpha = Math.max(0.08, 1 - j * 0.15); // Slower fade
+          ctx.globalAlpha = alpha * 0.35; // Slightly stronger than original
+          
+          // Only add glow to the very first character
+          if (j === 0) {
+            ctx.shadowColor = '#00FF41';
+            ctx.shadowBlur = 4;
+          } else {
+            ctx.shadowBlur = 0;
+          }
+          
+          ctx.fillText(matrixChars[charIndex], x, y);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  // Add simple Chromatic Aberration effect (very efficient)
+  if (chromaticAberration) {
+    ctx.save();
+    const aberrationOffset = Math.sin(progress * Math.PI * 2) * 2;
+    
+    // Create subtle color fringing effect
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.15;
+    
+    // Red fringe (shifted left and up)
+    ctx.fillStyle = '#FF0040';
+    ctx.fillRect(-aberrationOffset, -aberrationOffset * 0.5, canvas.width, canvas.height);
+    
+    // Blue fringe (shifted right and down)
+    ctx.fillStyle = '#0040FF';
+    ctx.fillRect(aberrationOffset, aberrationOffset * 0.5, canvas.width, canvas.height);
+    
     ctx.restore();
   }
   
