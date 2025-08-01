@@ -186,7 +186,6 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
               <option value="bounce">Bouncing Effect</option>
               <option value="slideFromBottom">Slide from Bottom</option>
               <option value="slideFromTop">Slide from Top</option>
-              <option value="binaryTransition">Binary Transition</option>
             </select>
           </div>
 
@@ -231,7 +230,6 @@ const ASCIIGenerator: React.FC<ASCIIGeneratorProps> = ({ text, generated }) => {
                 />
               </div>
             )}
-
 
             {/* Toggle Controls */}
             <div className="space-y-3">

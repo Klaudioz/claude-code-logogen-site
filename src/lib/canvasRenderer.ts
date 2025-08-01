@@ -96,8 +96,60 @@ export const renderStaticASCII = (options: RenderOptions): void => {
   }
 };
 
+const applyBinaryTransitionToText = (finalLines: string[], progress: number, text: string): string[] => {
+  // Apply binary transition effect during the first 50% of the animation (extended from 30%)
+  const transitionProgress = Math.min(progress / 0.5, 1);
+  const binaryPhase = Math.min(progress * 2, 1); // Slower binary flickering to match extended duration
+  
+  if (transitionProgress >= 1) {
+    return finalLines; // No more binary transition, show final text
+  }
+  
+  return finalLines.map((finalLine, lineIndex) => {
+    let displayLine = '';
+    
+    for (let charIndex = 0; charIndex < finalLine.length; charIndex++) {
+      // More gradual character reveal over extended duration
+      const charProgress = Math.max(0, Math.min(1, (transitionProgress - (charIndex / finalLine.length) * 0.3) * 1.5));
+      
+      if (charProgress < 0.4) {
+        // Extended binary flickering phase with independent timing for each character
+        const charSpeed = 12 + (charIndex * 3.7) % 18; // Slightly slower speed for longer viewing
+        const charOffset = (lineIndex * 2.3 + charIndex * 1.7) % 10; // Different phase offset
+        const timeVariation = binaryPhase * charSpeed + charOffset;
+        
+        // Use multiple layers of randomness for true independence
+        const random1 = Math.sin(timeVariation) > 0;
+        const random2 = Math.cos(timeVariation * 1.618) > 0; // Golden ratio for non-repeating pattern
+        const random3 = Math.sin(timeVariation * 0.786 + charIndex) > 0;
+        
+        // Combine multiple random sources for each character
+        const binaryValue = (random1 ? 1 : 0) + (random2 ? 1 : 0) + (random3 ? 1 : 0);
+        displayLine += binaryValue % 2 === 0 ? '0' : '1';
+      } else if (charProgress < 0.8) {
+        // Extended transition phase - mix of binary and final character
+        const mixPhase = (charProgress - 0.4) / 0.4;
+        if (Math.random() < mixPhase) {
+          displayLine += finalLine[charIndex];
+        } else {
+          // Independent random for transition phase too
+          const charSpeed = 10 + (charIndex * 4.1) % 12;
+          const timeVariation = transitionProgress * charSpeed + charIndex * 2.1 + lineIndex * 1.3;
+          const randomBit = Math.sin(timeVariation) * Math.cos(timeVariation * 2.1) > 0;
+          displayLine += randomBit ? '1' : '0';
+        }
+      } else {
+        // Final character revealed
+        displayLine += finalLine[charIndex];
+      }
+    }
+    
+    return displayLine;
+  });
+};
+
 const renderBounceAnimation = (ctx: CanvasRenderingContext2D, asciiLines: string[], options: AnimationOptions & { lineHeight: number }) => {
-  const { progress, bounceIntensity = 20, rotationIntensity = 0.02, scaleIntensity = 0.02, bounceSpeed = 1, lineHeight } = options;
+  const { progress, bounceIntensity = 20, rotationIntensity = 0.02, scaleIntensity = 0.02, bounceSpeed = 1, lineHeight, text } = options;
   
   const speedMultiplier = bounceSpeed;
   const bounceY = Math.sin(progress * Math.PI * 4 * speedMultiplier) * bounceIntensity;
@@ -105,20 +157,24 @@ const renderBounceAnimation = (ctx: CanvasRenderingContext2D, asciiLines: string
   const rotation = Math.sin(progress * Math.PI * 3 * speedMultiplier) * rotationIntensity;
   const scale = 1 + Math.sin(progress * Math.PI * 6 * speedMultiplier) * scaleIntensity;
 
+  // Apply binary transition effect
+  const displayLines = applyBinaryTransitionToText(asciiLines, progress, text);
+
   ctx.save();
   ctx.translate(options.canvas.width / 2, options.canvas.height / 2);
   ctx.rotate(rotation);
   ctx.scale(scale, scale);
   ctx.translate(0, bounceY + floatY);
 
-  renderTextLines(ctx, asciiLines, options, { lineHeight });
+  renderTextLines(ctx, displayLines, options, { lineHeight });
+  
   ctx.restore();
   
   return Math.abs(Math.sin(progress * Math.PI * 4 * speedMultiplier));
 };
 
 const renderSlideFromBottomAnimation = (ctx: CanvasRenderingContext2D, asciiLines: string[], options: AnimationOptions & { lineHeight: number }) => {
-  const { progress, lineHeight } = options;
+  const { progress, lineHeight, text } = options;
   
   // Use progress directly - video duration will control the speed
   const slideProgress = Math.min(progress, 1);
@@ -128,16 +184,20 @@ const renderSlideFromBottomAnimation = (ctx: CanvasRenderingContext2D, asciiLine
   const endY = options.canvas.height / 2; // Center the text vertically
   const currentY = startY + (endY - startY) * easeOutProgress;
 
+  // Apply binary transition effect
+  const displayLines = applyBinaryTransitionToText(asciiLines, progress, text);
+
   ctx.save();
   ctx.translate(options.canvas.width / 2, currentY);
-  renderTextLines(ctx, asciiLines, options, { lineHeight });
+  renderTextLines(ctx, displayLines, options, { lineHeight });
+  
   ctx.restore();
   
   return slideProgress;
 };
 
 const renderSlideFromTopAnimation = (ctx: CanvasRenderingContext2D, asciiLines: string[], options: AnimationOptions & { lineHeight: number }) => {
-  const { progress, lineHeight } = options;
+  const { progress, lineHeight, text } = options;
   
   const totalHeight = asciiLines.length * lineHeight;
   // Use progress directly - video duration will control the speed
@@ -148,9 +208,13 @@ const renderSlideFromTopAnimation = (ctx: CanvasRenderingContext2D, asciiLines: 
   const endY = options.canvas.height / 2; // Center the text vertically
   const currentY = startY + (endY - startY) * easeOutProgress;
 
+  // Apply binary transition effect
+  const displayLines = applyBinaryTransitionToText(asciiLines, progress, text);
+
   ctx.save();
   ctx.translate(options.canvas.width / 2, currentY);
-  renderTextLines(ctx, asciiLines, options, { lineHeight });
+  renderTextLines(ctx, displayLines, options, { lineHeight });
+  
   ctx.restore();
   
   return slideProgress;
@@ -189,29 +253,36 @@ const renderBinaryTransitionAnimation = (ctx: CanvasRenderingContext2D, asciiLin
       const charProgress = Math.max(0, Math.min(1, (transitionProgress - (charIndex / finalLine.length) * 0.6) * 1.5));
       
       if (charProgress < 0.2) {
-        // Binary flickering phase (longer)
-        const flickerSpeed = binaryPhase * 15;
-        displayLine += Math.sin(flickerSpeed + charIndex) > 0 ? '1' : '0';
+        // Binary flickering phase with independent timing for each character
+        // Each character has its own flickering speed and offset
+        const charSpeed = 10 + (charIndex * 3.7) % 15; // Different speed for each char (10-25)
+        const charOffset = (lineIndex * 2.3 + charIndex * 1.7) % 10; // Different phase offset
+        const timeVariation = binaryPhase * charSpeed + charOffset;
+        
+        // Use multiple layers of randomness for true independence
+        const random1 = Math.sin(timeVariation) > 0;
+        const random2 = Math.cos(timeVariation * 1.618) > 0; // Golden ratio for non-repeating pattern
+        const random3 = Math.sin(timeVariation * 0.786 + charIndex) > 0;
+        
+        // Combine multiple random sources for each character
+        const binaryValue = (random1 ? 1 : 0) + (random2 ? 1 : 0) + (random3 ? 1 : 0);
+        displayLine += binaryValue % 2 === 0 ? '0' : '1';
       } else if (charProgress < 0.8) {
         // Extended transition phase - mix of binary and final character
         const mixPhase = (charProgress - 0.2) / 0.6;
         if (Math.random() < mixPhase) {
           displayLine += finalLine[charIndex];
         } else {
-          displayLine += Math.random() > 0.5 ? '1' : '0';
+          // Independent random for transition phase too
+          const charSpeed = 8 + (charIndex * 4.1) % 12;
+          const timeVariation = transitionProgress * charSpeed + charIndex * 2.1 + lineIndex * 1.3;
+          const randomBit = Math.sin(timeVariation) * Math.cos(timeVariation * 2.1) > 0;
+          displayLine += randomBit ? '1' : '0';
         }
       } else {
         // Final character revealed
         displayLine += finalLine[charIndex];
       }
-    }
-    
-    // Add glitch effect during transition
-    if (transitionProgress > 0.1 && transitionProgress < 0.9) {
-      ctx.save();
-      ctx.fillStyle = `rgba(0, 255, 0, ${0.2 * (1 - Math.abs(transitionProgress - 0.5) * 2)})`;
-      ctx.fillText(displayLine, x + Math.random() * 3 - 1.5, y + Math.random() * 2 - 1);
-      ctx.restore();
     }
     
     ctx.fillText(displayLine, x, y);

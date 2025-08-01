@@ -29,7 +29,6 @@ function App() {
         <h1 className="text-4xl font-bold mb-8 text-center" style={{ color: '#D97757' }}>
           Claude Code Logo Generator
         </h1>
-        
         <div className="space-y-6 mb-8">
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: '#D97757' }}>
